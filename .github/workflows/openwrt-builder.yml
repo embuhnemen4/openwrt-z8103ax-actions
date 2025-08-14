@@ -1,4 +1,4 @@
-name: Build OpenWrt for Z8103AX
+name: Build OpenWrt ZBT-Z8103AX Minimal
 
 on:
   workflow_dispatch:
@@ -6,57 +6,41 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-
     steps:
-    - name: Checkout Repo
+    - name: Checkout repo
       uses: actions/checkout@v4
 
-    - name: Install dependencies
+    - name: Set up build environment
       run: |
         sudo apt update
         sudo apt install -y build-essential ccache ecj fastjar file g++ gawk \
-        gcc-multilib gettext git java-propose-classpath libelf-dev libncurses5-dev \
-        libncursesw5-dev libssl-dev python3 python3-distutils rsync unzip wget \
-        zlib1g-dev
+        gettext git java-propose-classpath libelf-dev libncurses5-dev \
+        libncursesw5-dev libssl-dev python3 python3-distutils python3-setuptools \
+        rsync unzip wget zlib1g-dev
 
     - name: Clone OpenWrt source
       run: |
-        git clone --depth=1 https://github.com/openwrt/openwrt.git
+        git clone https://github.com/openwrt/openwrt.git
         cd openwrt
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
-    - name: Copy DTS
+    - name: Copy DTS patch
       run: |
-        cp -f patches/dts/mt7981-zbtlink-zbt-z8103ax.dts openwrt/target/linux/mediatek/dts/
+        cp patches/dts/mt7981-zbtlink-zbt-z8103ax.dts openwrt/target/linux/mediatek/dts/
 
-    - name: Copy custom .config
+    - name: Copy minimal config
       run: |
-        cp -f .config openwrt/.config
+        cp .config openwrt/.config
 
-    - name: Free up space
-      run: |
-        sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android
-        df -h
-
-    - name: Cache build directories
-      uses: actions/cache@v4
-      with:
-        path: |
-          dl
-          build_dir
-          staging_dir
-        key: ${{ runner.os }}-openwrt-${{ hashFiles('**/.config') }}
-
-    - name: Build OpenWrt
+    - name: Build firmware
       run: |
         cd openwrt
-        rm -rf tmp .git
         make defconfig
-        make -j$(nproc) || make -j1 V=s
+        make -j$(nproc) V=s
 
-    - name: Upload Firmware
+    - name: Upload firmware
       uses: actions/upload-artifact@v4
       with:
-        name: openwrt-z8103ax-firmware
+        name: firmware
         path: openwrt/bin/targets/
