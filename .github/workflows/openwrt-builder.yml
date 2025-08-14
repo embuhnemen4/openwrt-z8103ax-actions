@@ -1,4 +1,4 @@
-name: OpenWrt Builder - Z8103AX (Optimized)
+name: Build OpenWrt for Z8103AX
 
 on:
   workflow_dispatch:
@@ -8,15 +8,36 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout
+    - name: Checkout Repo
       uses: actions/checkout@v4
 
-    - name: Setup Dependencies
+    - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential clang flex bison g++ gawk \
-          gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev \
-          python3-distutils rsync unzip zlib1g-dev file wget
+        sudo apt install -y build-essential ccache ecj fastjar file g++ gawk \
+        gcc-multilib gettext git java-propose-classpath libelf-dev libncurses5-dev \
+        libncursesw5-dev libssl-dev python3 python3-distutils rsync unzip wget \
+        zlib1g-dev
+
+    - name: Clone OpenWrt source
+      run: |
+        git clone --depth=1 https://github.com/openwrt/openwrt.git
+        cd openwrt
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+
+    - name: Copy DTS
+      run: |
+        cp -f patches/dts/mt7981-zbtlink-zbt-z8103ax.dts openwrt/target/linux/mediatek/dts/
+
+    - name: Copy custom .config
+      run: |
+        cp -f .config openwrt/.config
+
+    - name: Free up space
+      run: |
+        sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android
+        df -h
 
     - name: Cache build directories
       uses: actions/cache@v4
@@ -27,58 +48,11 @@ jobs:
           staging_dir
         key: ${{ runner.os }}-openwrt-${{ hashFiles('**/.config') }}
 
-    - name: Download OpenWrt Source
-      run: |
-        git clone https://github.com/openwrt/openwrt.git openwrt
-        cd openwrt
-        ./scripts/feeds update -a
-        ./scripts/feeds install -a
-
-    - name: Copy Custom DTS
-      run: |
-        cp -f patches/dts/z8103ax.dts openwrt/target/linux/mediatek/dts/
-
-    - name: Configure Target (Optimized)
-      run: |
-        cd openwrt
-        rm -f .config
-        # Target device
-        echo "CONFIG_TARGET_mediatek_mt798x=y" >> .config
-        echo "CONFIG_TARGET_mediatek_mt798x_DEVICE_z8103ax=y" >> .config
-        
-        # Minimal LuCI
-        echo "CONFIG_PACKAGE_luci=y" >> .config
-        echo "CONFIG_PACKAGE_luci-app-opkg=y" >> .config
-        echo "CONFIG_PACKAGE_luci-theme-bootstrap=y" >> .config
-
-        # Disable heavy packages
-        echo "# Disable Rust-related" >> .config
-        echo "CONFIG_PACKAGE_rustc=n" >> .config
-        echo "CONFIG_PACKAGE_cargo=n" >> .config
-        echo "# Disable NodeJS" >> .config
-        echo "CONFIG_PACKAGE_node=n" >> .config
-        echo "CONFIG_PACKAGE_nodejs=n" >> .config
-        echo "# Disable GoLang" >> .config
-        echo "CONFIG_PACKAGE_golang=n" >> .config
-        echo "# Disable Docker" >> .config
-        echo "CONFIG_PACKAGE_docker=n" >> .config
-        echo "CONFIG_PACKAGE_dockerd=n" >> .config
-        echo "# Disable Samba4" >> .config
-        echo "CONFIG_PACKAGE_samba4-server=n" >> .config
-        echo "CONFIG_PACKAGE_samba4-libs=n" >> .config
-        echo "# Disable PHP" >> .config
-        echo "CONFIG_PACKAGE_php8=n" >> .config
-        echo "CONFIG_PACKAGE_php8-cli=n" >> .config
-        echo "# Disable Python big packages" >> .config
-        echo "CONFIG_PACKAGE_python3=n" >> .config
-        echo "CONFIG_PACKAGE_python3-pip=n" >> .config
-
-        make defconfig
-
     - name: Build OpenWrt
       run: |
         cd openwrt
-        make -j$(nproc) download
+        rm -rf tmp .git
+        make defconfig
         make -j$(nproc) || make -j1 V=s
 
     - name: Upload Firmware
