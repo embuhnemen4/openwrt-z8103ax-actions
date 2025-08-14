@@ -1,4 +1,4 @@
-name: Build OpenWrt ZBT-Z8103AX Minimal
+name: Build OpenWrt ZBT-Z8103AX Minimal (Stable 24.10)
 
 on:
   workflow_dispatch:
@@ -18,9 +18,9 @@ jobs:
         libncursesw5-dev libssl-dev python3 python3-distutils python3-setuptools \
         rsync unzip wget zlib1g-dev
 
-    - name: Clone OpenWrt source
+    - name: Clone OpenWrt source (Stable 24.10)
       run: |
-        git clone https://github.com/openwrt/openwrt.git
+        git clone https://github.com/openwrt/openwrt.git -b openwrt-24.10
         cd openwrt
         ./scripts/feeds update -a
         ./scripts/feeds install -a
@@ -44,4 +44,3 @@ jobs:
       with:
         name: firmware
         path: openwrt/bin/targets/*/*/*.bin
-
