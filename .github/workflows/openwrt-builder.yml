@@ -9,7 +9,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup Dependencies
       run: |
@@ -19,7 +19,7 @@ jobs:
           python3-distutils rsync unzip zlib1g-dev file wget
 
     - name: Cache build directories
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           dl
@@ -82,7 +82,7 @@ jobs:
         make -j$(nproc) || make -j1 V=s
 
     - name: Upload Firmware
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: openwrt-z8103ax-firmware
         path: openwrt/bin/targets/
